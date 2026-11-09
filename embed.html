@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Recensione Google Maps</title>
+  <style>
+    :root { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { margin: 0; padding: 12px; background: transparent; }
+    .card { background: #ffffff; border: 1px solid #dadce0; border-radius: 12px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .title { font-size: 16px; font-weight: 700; color: #1a73e8; margin: 0 0 6px 0; }
+    .stars { color: #f4b400; font-size: 16px; margin-bottom: 8px; }
+    .text { font-size: 14px; color: #3c4043; line-height: 1.5; margin-bottom: 12px; white-space: pre-line; }
+    .btn { display: inline-block; background: #1a73e8; color: #ffffff; text-decoration: none; font-size: 13px; font-weight: 600; padding: 8px 14px; border-radius: 20px; }
+    .btn:focus-visible { outline: 2px solid #1a73e8; outline-offset: 2px; }
+  </style>
+</head>
+<body>
+
+  <div class="card" role="article" aria-label="Recensione Google Maps">
+    <h3 id="place-name" class="title"></h3>
+    <div id="stars" class="stars" aria-hidden="true"></div>
+    <div id="review-text" class="text"></div>
+    <a id="maps-link" href="#" target="_blank" rel="noopener noreferrer" class="btn" style="display:none;">
+      Vedi o vota su Google Maps &rarr;
+    </a>
+  </div>
+
+  <script>
+    (function () {
+      "use strict";
+
+      // Utility per sanitizzazione URL (Anti-XSS / Anti-JavaScript URIs)
+      function isSafeUrl(urlString) {
+        try {
+          const parsed = new URL(urlString, window.location.href);
+          return parsed.protocol === "http:" || parsed.protocol === "https:";
+        } catch (e) {
+          return false;
+        }
+      }
+
+      const params = new URLSearchParams(window.location.search);
+      const jsonUrlParam = params.get('json') || 'data.json';
+      const reviewIdParam = Number.parseInt(params.get('id') || '0', 10);
+      const safeReviewId = Number.isNaN(reviewIdParam) || reviewIdParam < 0 ? 0 : reviewIdParam;
+
+      // Sanitizzazione dell'URL del JSON per prevenire SSRF/Redirect lato client
+      if (!isSafeUrl(jsonUrlParam)) {
+        console.error("URL del file JSON non valido o non sicuro.");
+        return;
+      }
+
+      fetch(jsonUrlParam)
+        .then(response => {
+          if (!response.ok) throw new Error("Errore nel caricamento del file JSON");
+          return response.json();
+        })
+        .then(data => {
+          if (!Array.isArray(data) || data.length === 0) return;
+
+          const review = data[safeReviewId] || data[0];
+          if (typeof review !== 'object' || review === null) return;
+
+          // Assicurazione tipo e assegnazione sicura via textContent (No InnerHTML = No XSS)
+          document.getElementById('place-name').textContent = String(review.Luogo || 'Recensione');
+
+          const rawRating = Number.parseInt(review.Valutazione, 10);
+          const rating = Number.isNaN(rawRating) ? 5 : Math.min(5, Math.max(1, rawRating));
+          document.getElementById('stars').textContent = '★'.repeat(rating) + '☆'.repeat(5 - rating);
+
+          document.getElementById('review-text').textContent = String(review.Recensione || '');
+
+          // Validazione URL profondo verso Google Maps
+          const mapsUrl = String(review.URL_GoogleMaps || '');
+          if (mapsUrl && isSafeUrl(mapsUrl)) {
+            const linkEl = document.getElementById('maps-link');
+            linkEl.href = mapsUrl;
+            linkEl.setAttribute('rel', 'noopener noreferrer'); // Anti-Tabnabbing
+            linkEl.style.display = 'inline-block';
+          }
+        })
+        .catch(err => {
+          // Gestione difensiva degli errori senza esporre dettagli interni
+          console.error("Impossibile mostrare la recensione.");
+        });
+    })();
+  </script>
+</body>
+</html>

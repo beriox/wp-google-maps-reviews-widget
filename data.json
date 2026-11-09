@@ -1,0 +1,10 @@
+[
+  {
+    "Luogo": "Duomo di Milano",
+    "Valutazione": 5,
+    "Recensione": "Esempio dimostrativo: il Duomo di Milano è uno dei simboli della città.",
+    "URL_GoogleMaps": "https://www.google.com/maps/search/?api=1&query=45.464211%2C9.191383",
+    "Latitudine": 45.464211,
+    "Longitudine": 9.191383
+  }
+]
